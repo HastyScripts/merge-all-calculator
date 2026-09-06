@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Merge All Calculator</title>
+    <link rel="icon" type="image/png" href="tier2.png">
 
     <style>
         * {
@@ -14,29 +14,33 @@
         body {
             margin: 0;
             padding: 30px 15px;
-            font-family: Arial, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             background: #111;
             color: #fff;
         }
 
         .calculator {
+            width: 100%;
             max-width: 700px;
-            margin: auto;
+            margin: 0 auto;
+            padding: 25px;
             background: #1c1c1c;
             border: 1px solid #333;
             border-radius: 12px;
-            padding: 25px;
         }
 
         h1 {
-            margin-top: 0;
+            margin: 0;
             text-align: center;
+            font-size: 30px;
         }
 
         .description {
+            margin-top: 10px;
+            margin-bottom: 25px;
             text-align: center;
             color: #aaa;
-            margin-bottom: 25px;
+            font-size: 15px;
         }
 
         .tiers {
@@ -45,32 +49,39 @@
             gap: 8px 15px;
         }
 
-       .tier-label {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
+        .tier-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 44px;
+        }
 
-.tier-image {
-    width: 40px;
-    height: 40px;
-    object-fit: contain;
-    border-radius: 6px;
-}
+        .tier-image {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            flex-shrink: 0;
+            border-radius: 6px;
+        }
 
         input {
             width: 100%;
-            padding: 9px;
+            padding: 9px 10px;
             border: 1px solid #444;
             border-radius: 6px;
             background: #111;
-            color: white;
+            color: #fff;
             font-size: 15px;
         }
 
         input:focus {
             outline: none;
             border-color: #777;
+        }
+
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            margin: 0;
         }
 
         .buttons {
@@ -87,47 +98,73 @@
             cursor: pointer;
             font-size: 16px;
             font-weight: bold;
+            transition: opacity 0.15s;
+        }
+
+        button:hover {
+            opacity: 0.8;
         }
 
         #calculate {
-            background: white;
-            color: black;
+            background: #fff;
+            color: #000;
         }
 
         #reset {
             background: #333;
-            color: white;
-        }
-
-        button:hover {
-            opacity: 0.85;
+            color: #fff;
         }
 
         #result {
+            display: none;
             margin-top: 25px;
             padding: 18px;
             background: #111;
             border-radius: 8px;
-            display: none;
         }
 
         #result h2 {
             margin-top: 0;
         }
 
-        .result-tier {
-            padding: 4px 0;
+        .highest {
+            margin-bottom: 15px;
+            font-size: 17px;
+            font-weight: bold;
         }
 
-        .highest {
-            font-weight: bold;
-            margin-bottom: 15px;
+        .result-tier {
+            padding: 4px 0;
+            font-size: 16px;
         }
 
         .warning {
-            color: #aaa;
-            font-size: 13px;
-            margin-top: 10px;
+            margin-top: 12px;
+            color: #777;
+            font-size: 12px;
+        }
+
+        @media (max-width: 500px) {
+            body {
+                padding: 15px 8px;
+            }
+
+            .calculator {
+                padding: 18px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .tiers {
+                grid-template-columns: 1fr 90px;
+            }
+
+            .tier-image {
+                width: 34px;
+                height: 34px;
+            }
         }
     </style>
 </head>
@@ -135,7 +172,6 @@
 <body>
 
 <div class="calculator">
-
     <h1>Merge All Calculator</h1>
 
     <div class="description">
@@ -150,151 +186,119 @@
     </div>
 
     <div id="result"></div>
-
 </div>
 
 <script>
-
 const MAX_TIER = 20;
 const MAX_AMOUNT = 200;
 
 const tierImages = {
-    1: "images/tier1.png",
-    2: "images/tier2.png",
-    3: "images/tier3.png",
-    4: "images/tier4.png",
-    5: "images/tier5.png",
-    6: "images/tier6.png",
-    7: "images/tier7.png",
-    8: "images/tier8.png",
-    9: "images/tier9.png",
-    10: "images/tier10.png",
-    11: "images/tier11.png",
-    12: "images/tier12.png",
-    13: "images/tier13.png",
-    14: "images/tier14.png",
-    15: "images/tier15.png",
-    16: "images/tier16.png",
-    17: "images/tier17.png",
-    18: "images/tier18.png",
-    19: "images/tier19.png",
-    20: "images/tier20.png"
+    1: "tier1.png",
+    2: "tier2.png",
+    3: "tier3.png",
+    4: "tier4.png",
+    5: "tier5.png",
+    6: "tier6.png",
+    7: "tier7.png",
+    8: "tier8.png",
+    9: "tier9.png",
+    10: "tier10.png",
+    11: "tier11.png",
+    12: "tier12.png",
+    13: "tier13.png",
+    14: "tier14.png",
+    15: "tier15.png",
+    16: "tier16.png",
+    17: "tier17.png",
+    18: "tier18.png",
+    19: "tier19.png",
+    20: "tier20.png"
 };
 
 const tiersContainer = document.getElementById("tiers");
 const result = document.getElementById("result");
 
-/* Create Tier 1 → Tier 20 inputs */
-
 for (let tier = 1; tier <= MAX_TIER; tier++) {
-
     const label = document.createElement("div");
-label.className = "tier-label";
+    label.className = "tier-label";
 
-const image = document.createElement("img");
-image.src = tierImages[tier];
-image.alt = "Tier " + tier;
-image.className = "tier-image";
+    const image = document.createElement("img");
+    image.src = tierImages[tier];
+    image.alt = "Tier " + tier;
+    image.className = "tier-image";
 
-const text = document.createElement("span");
-text.textContent = "Tier " + tier;
+    const text = document.createElement("span");
+    text.textContent = "Tier " + tier;
 
-label.appendChild(image);
-label.appendChild(text);
+    label.appendChild(image);
+    label.appendChild(text);
 
     const input = document.createElement("input");
-
     input.type = "number";
     input.min = "0";
     input.max = MAX_AMOUNT;
     input.value = "0";
     input.id = "tier-" + tier;
+    input.setAttribute("aria-label", "Tier " + tier + " amount");
 
     tiersContainer.appendChild(label);
     tiersContainer.appendChild(input);
 }
 
-
-/* Calculate */
-
 document.getElementById("calculate").addEventListener("click", function () {
-
-    let balls = [];
-
-    /* Read all 20 tiers */
+    const balls = [];
 
     for (let tier = 1; tier <= MAX_TIER; tier++) {
+        const input = document.getElementById("tier-" + tier);
 
-        let input = document.getElementById("tier-" + tier);
+        let amount = parseInt(input.value, 10);
 
-        let amount = parseInt(input.value) || 0;
+        if (Number.isNaN(amount)) {
+            amount = 0;
+        }
 
         amount = Math.max(0, Math.min(MAX_AMOUNT, amount));
-
         input.value = amount;
-
         balls[tier] = amount;
     }
 
-
-    /* Merge upward */
-
     for (let tier = 1; tier < MAX_TIER; tier++) {
-
-        let mergeAmount = Math.floor(balls[tier] / 2);
+        const mergeAmount = Math.floor(balls[tier] / 2);
 
         balls[tier] = balls[tier] % 2;
-
         balls[tier + 1] += mergeAmount;
     }
-
-
-    /* Find highest tier */
 
     let highestTier = 0;
 
     for (let tier = MAX_TIER; tier >= 1; tier--) {
-
         if (balls[tier] > 0) {
             highestTier = tier;
             break;
         }
     }
 
-
-    /* Display result */
-
     result.style.display = "block";
 
     if (highestTier === 0) {
-
         result.innerHTML = `
             <h2>Result</h2>
             <div>No balls entered.</div>
         `;
-
         return;
     }
 
-
     let html = `
         <h2>Result</h2>
-
         <div class="highest">
             Highest tier: Tier ${highestTier}
         </div>
-
         <strong>After merging:</strong>
         <br><br>
     `;
 
-
-    /* Highest tiers first */
-
     for (let tier = MAX_TIER; tier >= 1; tier--) {
-
         if (balls[tier] > 0) {
-
             html += `
                 <div class="result-tier">
                     Tier ${tier} ×${balls[tier]}
@@ -303,31 +307,23 @@ document.getElementById("calculate").addEventListener("click", function () {
         }
     }
 
-
     html += `
         <div class="warning">
-            Each starting tier accepts a maximum of ${MAX_AMOUNT} balls.
+            Starting amounts are limited to ${MAX_AMOUNT} balls per tier.
         </div>
     `;
 
     result.innerHTML = html;
-
 });
 
-
-/* Reset */
-
 document.getElementById("reset").addEventListener("click", function () {
-
     for (let tier = 1; tier <= MAX_TIER; tier++) {
-
         document.getElementById("tier-" + tier).value = "0";
     }
 
     result.style.display = "none";
     result.innerHTML = "";
 });
-
 </script>
 
 </body>
