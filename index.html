@@ -36,11 +36,91 @@
         }
 
         .description {
-            margin-top: 10px;
-            margin-bottom: 25px;
+            margin: 10px 0 22px;
             text-align: center;
             color: #aaa;
             font-size: 15px;
+            line-height: 1.5;
+        }
+
+        .capacity-box {
+            padding: 15px;
+            margin-bottom: 20px;
+            background: #151515;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+
+        .capacity-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .capacity-title {
+            font-weight: bold;
+        }
+
+        .capacity-count {
+            color: #aaa;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .capacity-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .capacity-controls input {
+            flex: 1;
+        }
+
+        .capacity-value {
+            min-width: 42px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .capacity-help {
+            margin-top: 8px;
+            color: #777;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .status {
+            display: none;
+            margin-bottom: 20px;
+            padding: 11px 13px;
+            border-radius: 7px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .status.visible {
+            display: block;
+        }
+
+        .status.normal {
+            background: #151515;
+            border: 1px solid #333;
+            color: #aaa;
+        }
+
+        .status.warning {
+            background: #241d12;
+            border: 1px solid #57451f;
+            color: #e0c98b;
+        }
+
+        .status.error {
+            background: #281616;
+            border: 1px solid #5a2929;
+            color: #e59b9b;
         }
 
         .tiers {
@@ -79,6 +159,10 @@
             border-color: #777;
         }
 
+        input.invalid {
+            border-color: #a44;
+        }
+
         input::-webkit-outer-spin-button,
         input::-webkit-inner-spin-button {
             margin: 0;
@@ -98,11 +182,20 @@
             cursor: pointer;
             font-size: 16px;
             font-weight: bold;
-            transition: opacity 0.15s;
+            transition: opacity 0.15s, transform 0.1s;
         }
 
-        button:hover {
-            opacity: 0.8;
+        button:hover:not(:disabled) {
+            opacity: 0.85;
+        }
+
+        button:active:not(:disabled) {
+            transform: scale(0.99);
+        }
+
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.35;
         }
 
         #calculate {
@@ -134,14 +227,24 @@
         }
 
         .result-tier {
-            padding: 4px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 0;
             font-size: 16px;
+        }
+
+        .result-image {
+            width: 34px;
+            height: 34px;
+            object-fit: contain;
         }
 
         .warning {
             margin-top: 12px;
             color: #777;
             font-size: 12px;
+            line-height: 1.4;
         }
 
         @media (max-width: 500px) {
@@ -165,6 +268,12 @@
                 width: 34px;
                 height: 34px;
             }
+
+            .capacity-top {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 4px;
+            }
         }
     </style>
 </head>
@@ -174,9 +283,34 @@
 <div class="calculator">
     <h1>Merge All Calculator</h1>
 
-    <div class="description">
-        Enter how many balls you have for each tier.
+    <div class="description" id="description">
+        Enter the number of balls you currently have in each tier.
     </div>
+
+    <div class="capacity-box">
+        <div class="capacity-top">
+            <div class="capacity-title">Ball capacity</div>
+            <div class="capacity-count" id="capacityCount">0 / 110 balls</div>
+        </div>
+
+        <div class="capacity-controls">
+            <input
+                id="capacity"
+                type="range"
+                min="110"
+                max="200"
+                value="110"
+            >
+
+            <div class="capacity-value" id="capacityValue">110</div>
+        </div>
+
+        <div class="capacity-help" id="capacityHelp">
+            Your maximum ball capacity depends on your upgrades.
+        </div>
+    </div>
+
+    <div class="status" id="status"></div>
 
     <div class="tiers" id="tiers"></div>
 
@@ -190,7 +324,8 @@
 
 <script>
 const MAX_TIER = 20;
-const MAX_AMOUNT = 200;
+const MIN_CAPACITY = 110;
+const MAX_CAPACITY = 200;
 
 const tierImages = {
     1: "tier1.png",
@@ -217,6 +352,13 @@ const tierImages = {
 
 const tiersContainer = document.getElementById("tiers");
 const result = document.getElementById("result");
+const status = document.getElementById("status");
+const capacity = document.getElementById("capacity");
+const capacityValue = document.getElementById("capacityValue");
+const capacityCount = document.getElementById("capacityCount");
+const capacityHelp = document.getElementById("capacityHelp");
+const description = document.getElementById("description");
+const calculateButton = document.getElementById("calculate");
 
 for (let tier = 1; tier <= MAX_TIER; tier++) {
     const label = document.createElement("div");
@@ -236,29 +378,133 @@ for (let tier = 1; tier <= MAX_TIER; tier++) {
     const input = document.createElement("input");
     input.type = "number";
     input.min = "0";
-    input.max = MAX_AMOUNT;
+    input.max = MAX_CAPACITY;
     input.value = "0";
     input.id = "tier-" + tier;
     input.setAttribute("aria-label", "Tier " + tier + " amount");
+
+    input.addEventListener("input", updateLiveStatus);
 
     tiersContainer.appendChild(label);
     tiersContainer.appendChild(input);
 }
 
-document.getElementById("calculate").addEventListener("click", function () {
+function getTotalBalls() {
+    let total = 0;
+
+    for (let tier = 1; tier <= MAX_TIER; tier++) {
+        const input = document.getElementById("tier-" + tier);
+        let amount = parseInt(input.value, 10);
+
+        if (Number.isNaN(amount) || amount < 0) {
+            amount = 0;
+        }
+
+        total += amount;
+    }
+
+    return total;
+}
+
+function updateLiveStatus() {
+    const total = getTotalBalls();
+    const max = parseInt(capacity.value, 10);
+    const remaining = max - total;
+
+    capacityValue.textContent = max;
+    capacityCount.textContent = `${total} / ${max} balls`;
+
+    for (let tier = 1; tier <= MAX_TIER; tier++) {
+        const input = document.getElementById("tier-" + tier);
+        input.classList.remove("invalid");
+    }
+
+    if (total > max) {
+        status.className = "status visible error";
+        status.textContent =
+            `You have ${total} balls selected, but your inventory only holds ${max}. Remove ${total - max} ball${total - max === 1 ? "" : "s"} before calculating.`;
+
+        for (let tier = 1; tier <= MAX_TIER; tier++) {
+            const input = document.getElementById("tier-" + tier);
+
+            if (parseInt(input.value, 10) > 0) {
+                input.classList.add("invalid");
+            }
+        }
+
+        calculateButton.disabled = true;
+    } else if (total === 0) {
+        status.className = "status visible normal";
+        status.textContent =
+            `You can enter up to ${max} balls.`;
+
+        calculateButton.disabled = false;
+    } else if (remaining === 0) {
+        status.className = "status visible warning";
+        status.textContent =
+            `Your inventory is full at ${max} balls.`;
+
+        calculateButton.disabled = false;
+    } else if (remaining <= 10) {
+        status.className = "status visible warning";
+        status.textContent =
+            `You have ${remaining} space${remaining === 1 ? "" : "s"} left in your ${max}-ball inventory.`;
+
+        calculateButton.disabled = false;
+    } else {
+        status.className = "status visible normal";
+        status.textContent =
+            `You have ${total} / ${max} balls. ${remaining} space${remaining === 1 ? "" : "s"} remaining.`;
+
+        calculateButton.disabled = false;
+    }
+
+    if (max === MIN_CAPACITY) {
+        capacityHelp.textContent =
+            "Increase your inventory capacity through upgrades to hold more balls.";
+    } else if (max === MAX_CAPACITY) {
+        capacityHelp.textContent =
+            "Your inventory is at the maximum capacity.";
+    } else {
+        capacityHelp.textContent =
+            `Your current inventory can hold ${max} balls.`;
+    }
+
+    if (total === 0) {
+        description.textContent =
+            "Enter the number of balls you currently have in each tier.";
+    } else if (total === max) {
+        description.textContent =
+            "Your inventory is full. Calculate to see what happens when you merge everything.";
+    } else {
+        description.textContent =
+            "Enter your balls below. The calculator keeps track of your inventory capacity.";
+    }
+}
+
+capacity.addEventListener("input", function() {
+    updateLiveStatus();
+});
+
+document.getElementById("calculate").addEventListener("click", function() {
+    const total = getTotalBalls();
+    const max = parseInt(capacity.value, 10);
+
+    if (total > max) {
+        updateLiveStatus();
+        return;
+    }
+
     const balls = [];
 
     for (let tier = 1; tier <= MAX_TIER; tier++) {
         const input = document.getElementById("tier-" + tier);
-
         let amount = parseInt(input.value, 10);
 
-        if (Number.isNaN(amount)) {
+        if (Number.isNaN(amount) || amount < 0) {
             amount = 0;
         }
 
-        amount = Math.max(0, Math.min(MAX_AMOUNT, amount));
-        input.value = amount;
         balls[tier] = amount;
     }
 
@@ -301,7 +547,12 @@ document.getElementById("calculate").addEventListener("click", function () {
         if (balls[tier] > 0) {
             html += `
                 <div class="result-tier">
-                    Tier ${tier} ×${balls[tier]}
+                    <img
+                        class="result-image"
+                        src="${tierImages[tier]}"
+                        alt="Tier ${tier}"
+                    >
+                    <span>Tier ${tier} ×${balls[tier]}</span>
                 </div>
             `;
         }
@@ -309,21 +560,27 @@ document.getElementById("calculate").addEventListener("click", function () {
 
     html += `
         <div class="warning">
-            Starting amounts are limited to ${MAX_AMOUNT} balls per tier.
+            Starting inventory: ${total} / ${max} balls.
         </div>
     `;
 
     result.innerHTML = html;
 });
 
-document.getElementById("reset").addEventListener("click", function () {
+document.getElementById("reset").addEventListener("click", function() {
     for (let tier = 1; tier <= MAX_TIER; tier++) {
         document.getElementById("tier-" + tier).value = "0";
     }
 
     result.style.display = "none";
     result.innerHTML = "";
+
+    capacity.value = "110";
+
+    updateLiveStatus();
 });
+
+updateLiveStatus();
 </script>
 
 </body>
